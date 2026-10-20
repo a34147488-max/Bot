@@ -1,59 +1,96 @@
-(() => {
-  const $ = id => document.getElementById(id);
-  const missions = [
-    {title:"Сигнал из туманности",tag:"РАЗВЕДКА",text:"Неизвестный импульс пробился сквозь космический шум. Определи источник и занеси находку в журнал.",name:"Импульс туманности",detail:"Источник сигнала найден в облаке Лиры. Первый неизвестный импульс внесён в звёздную карту.",reward:35},
-    {title:"Ледяная луна",tag:"АНАЛИЗ",text:"Под толщей древнего льда обнаружены следы необычной атмосферы. Проведи спектральный анализ.",name:"Атмосфера Эйры",detail:"В ледяной коре обнаружены кристаллы с редким энергетическим следом.",reward:45},
-    {title:"Забытый маяк",tag:"ВОССТАНОВЛЕНИЕ",text:"На краю сектора мерцает аварийный маяк. Восстанови его питание и открой безопасный маршрут.",name:"Маяк активирован",detail:"Навигационный маяк снова передаёт координаты. Открыт новый маршрут.",reward:60},
-    {title:"Сад астероидов",tag:"НАВИГАЦИЯ",text:"Проложи курс через поле минерализованных астероидов и найди путь к неизученному сектору.",name:"Сад астероидов",detail:"Безопасный маршрут построен. В поле найдены редкие минеральные образования.",reward:75},
-    {title:"Граница тишины",tag:"ПЕРВЫЙ КОНТАКТ",text:"За пределами известных карт движется объект без теплового следа. Сканируй его осторожно.",name:"Объект за границей",detail:"Обнаружен неизвестный светящийся объект. Карта экспедиции расширена.",reward:100}
-  ];
-  const defaults={energy:120,discoveries:0,level:1,progress:0,mission:0,log:[],sound:false};
-  let state;
-  try{state={...defaults,...JSON.parse(localStorage.getItem("nova-save")||"{}")}}catch{state={...defaults}}
-  state.energy=Math.max(0,Number(state.energy)||0);
-  state.discoveries=Math.max(0,Number(state.discoveries)||0);
-  state.level=Math.max(1,Number(state.level)||1);
-  state.mission=Math.max(0,Math.min(Number(state.mission)||0,missions.length-1));
-  state.progress=Math.max(0,Math.min(Number(state.progress)||0,2));
-  state.log=Array.isArray(state.log)?state.log.slice(0,8):[];
-  function save(){try{localStorage.setItem("nova-save",JSON.stringify(state))}catch{}}
-  function esc(s){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
-  function render(){
-    const previousEnergy=$("energy").textContent;
-    $("energy").textContent=state.energy.toLocaleString("ru-RU");
-    if(previousEnergy!==$("energy").textContent){$("energy").classList.remove("value-pop");void $("energy").offsetWidth;$("energy").classList.add("value-pop");}
-    $("energyBar").style.width=Math.min(100,state.energy/150*100)+"%";
-    $("energyPct").textContent=Math.min(100,Math.round(state.energy/150*100))+"%";
-    $("discoveries").textContent=String(state.discoveries).padStart(2,"0");
-    $("level").textContent=String(state.level).padStart(2,"0");
-    const m=missions[state.mission];
-    $("missionNumber").textContent=String(state.mission+1).padStart(2,"0");
-    $("missionTitle").textContent=m.title;
-    $("missionTag").textContent=m.tag;
-    $("missionText").textContent=m.text;
-    $("reward").innerHTML='НАГРАДА <b>+'+m.reward+' EN</b>';
-    $("progress").style.width=(state.progress/3*100)+"%";
-    $("progressLabel").textContent=state.progress+" / 3";
-    $("scanBtn").disabled=state.energy<10;
-    $("scanBtn").innerHTML=(state.energy<10?"Нет энергии":state.progress===2?"Завершить миссию":"Сканировать")+' <span>↗</span>';
-    $("logCount").textContent=state.log.length+" ЗАПИСЕЙ";
-    $("logList").innerHTML=state.log.length?state.log.map(x=>'<article class="log-item"><div class="log-icon">✦</div><div><strong>'+esc(x.title)+'</strong><small>'+esc(x.detail)+'</small><div class="log-reward">+'+Number(x.reward)+' EN · МИССИЯ ЗАВЕРШЕНА</div></div></article>').join(""):'<div class="log-empty"><span>—</span> Журнал пуст. Первое открытие ждёт тебя.</div>';
-    $("soundBtn").textContent=state.sound?"♪":"◖";
-  }
-  function beep(freq=440,duration=.08){if(!state.sound)return;try{const C=window.AudioContext||window.webkitAudioContext;const c=new C();const o=c.createOscillator(),g=c.createGain();o.frequency.value=freq;o.type="sine";g.gain.value=.035;o.connect(g);g.connect(c.destination);o.start();g.gain.exponentialRampToValueAtTime(.001,c.currentTime+duration);o.stop(c.currentTime+duration)}catch{}}
-  $("scanBtn").addEventListener("click",()=>{
-    if(state.energy<10){$("result").textContent="Энергии недостаточно. Заверши доступные действия позже.";return}
-    state.energy-=10;state.progress++;beep(310+state.progress*100);
-    const card=$("missionSection").querySelector(".mission-card");card.classList.remove("scanning","completed");void card.offsetWidth;card.classList.add("scanning");setTimeout(()=>card.classList.remove("scanning"),1150);
-    if(state.progress<3){$("result").textContent=["Сканер калибруется. Получен первый пакет данных…","Сигнал усиливается. Координаты почти определены…"][state.progress-1]}
-    else{
-      const m=missions[state.mission];state.energy+=m.reward;state.discoveries++;state.log.unshift({title:m.name,detail:m.detail,reward:m.reward});state.log=state.log.slice(0,8);state.level=1+Math.floor(state.discoveries/2);state.progress=0;state.mission=(state.mission+1)%missions.length;
-      card.classList.remove("scanning");card.classList.add("completed");setTimeout(()=>card.classList.remove("completed"),900);
-      $("result").textContent="ОТКРЫТИЕ ПОДТВЕРЖДЕНО — "+m.name+". Получено +"+m.reward+" энергии.";beep(720,.18);
-    }
-    save();render();
-  });
-  $("startBtn").addEventListener("click",()=>{$("missionSection").scrollIntoView({behavior:"smooth",block:"start"});const card=$("missionSection").querySelector(".mission-card");card.classList.remove("scanning");void card.offsetWidth;card.classList.add("scanning");setTimeout(()=>card.classList.remove("scanning"),1150);setTimeout(()=>$("scanBtn").focus({preventScroll:true}),350)});
-  $("soundBtn").addEventListener("click",()=>{state.sound=!state.sound;save();render();if(state.sound)beep(520)});
-  render();
+(()=>{
+const $=id=>document.getElementById(id);
+const missions=[
+{title:"Сигнал из туманности",tag:"РАЗВЕДКА",text:"Неизвестный импульс пробился сквозь космический шум. Проведи три этапа сканирования.",name:"Импульс Лиры",detail:"Источник сигнала найден в облаке Лиры. Координаты внесены в звёздную карту.",reward:35,credits:20,alloy:1},
+{title:"Ледяная луна",tag:"АНАЛИЗ",text:"Под древним льдом обнаружен редкий энергетический след. Нужны дополнительные замеры.",name:"Атмосфера Эйры",detail:"В ледяной коре найдены кристаллы с аномальным спектром.",reward:45,credits:30,alloy:2},
+{title:"Забытый маяк",tag:"ВОССТАНОВЛЕНИЕ",text:"Аварийный маяк молчит уже столетия. Перезапусти его навигационное ядро.",name:"Маяк активирован",detail:"Открыт безопасный маршрут к внешним секторам.",reward:60,credits:45,alloy:3},
+{title:"Сад астероидов",tag:"НАВИГАЦИЯ",text:"Поле минерализованных астероидов искажает датчики. Проведи безопасный маршрут.",name:"Минеральный пояс",detail:"Найдены редкие минералы и короткий путь к новой системе.",reward:75,credits:60,alloy:4},
+{title:"Граница тишины",tag:"ПЕРВЫЙ КОНТАКТ",text:"Объект без теплового следа движется за пределами известных карт.",name:"Объект за границей",detail:"Карта экспедиции расширена. Получен фрагмент неизвестной технологии.",reward:100,credits:90,alloy:6}
+];
+const sectors=[
+{name:"Лира",code:"N-07",desc:"Слабый сигнал и обломки старой станции. Подходит для первой разведки.",cost:0,energy:0,credits:20,alloy:1,worlds:1,colors:["#d8e4d4","#648c8a","#83e5f433"]},
+{name:"Пепельный пояс",code:"N-12",desc:"Пыльные кольца и металлические астероиды. Риск столкновения повышен.",cost:45,energy:18,credits:45,alloy:3,worlds:1,colors:["#e6b99a","#9a5e50","#ff9b6944"]},
+{name:"Эйра",code:"K-03",desc:"Ледяная планета с подповерхностным океаном и редкими кристаллами.",cost:90,energy:28,credits:75,alloy:5,worlds:2,colors:["#e0f8ff","#6099b7","#83e5f455"]},
+{name:"Затмение",code:"X-19",desc:"Двойная звезда создаёт нестабильные гравитационные линзы.",cost:160,energy:42,credits:120,alloy:7,worlds:2,colors:["#d6b5ff","#674da3","#bd8aff55"]},
+{name:"Бездна",code:"V-44",desc:"Сигнал едва различим. Дальние сканеры обязательны для безопасного входа.",cost:260,energy:58,credits:200,alloy:10,worlds:3,colors:["#a2e4d0","#326b72","#55f5c655"]},
+{name:"Нулевая точка",code:"Ω-00",desc:"Ни один зонд не вернулся. Внутри может находиться источник аномалий.",cost:420,energy:75,credits:320,alloy:15,worlds:4,colors:["#fff0a6","#a26c42","#ffdf7955"]}
+];
+const modules=[
+{id:"reactor",name:"Реактор Helios",tag:"ЭНЕРГЕТИКА",glyph:"⟡",desc:"Увеличивает эффективность энергии и ёмкость систем.",base:65,alloy:0,max:8},
+{id:"scanner",name:"Спектральный сканер",tag:"РАЗВЕДКА",glyph:"⌖",desc:"Каждый этап сканирования даёт больше материалов.",base:80,alloy:1,max:8},
+{id:"drive",name:"Квантовый двигатель",tag:"НАВИГАЦИЯ",glyph:"⟢",desc:"Снижает стоимость прыжков между секторами.",base:100,alloy:2,max:8},
+{id:"extractor",name:"Автодобытчик",tag:"ПРОИЗВОДСТВО",glyph:"◈",desc:"Даёт кредиты при сборе добычи. Чем выше уровень, тем больше доход.",base:90,alloy:1,max:8},
+{id:"shield",name:"Плазменный щит",tag:"ЗАЩИТА",glyph:"⬡",desc:"Снижает риск потери ресурсов в аномалиях.",base:110,alloy:2,max:8},
+{id:"archive",name:"Квантовый архив",tag:"АНАЛИТИКА",glyph:"⌘",desc:"Повышает награды за открытия и контракты.",base:140,alloy:3,max:8}
+];
+const techs=[
+{id:"mapping",name:"Картография дальнего радиуса",tag:"НАВИГАЦИЯ",glyph:"⌘",desc:"Открывает доступ к дальним секторам при более низком ранге.",cost:100,alloy:3,artifacts:1},
+{id:"resonance",name:"Резонансный сбор",tag:"ДОБЫЧА",glyph:"◌",desc:"При завершении миссий есть шанс найти дополнительный сплав.",cost:130,alloy:4,artifacts:1},
+{id:"echo",name:"Эхо древних",tag:"АРТЕФАКТЫ",glyph:"◇",desc:"Каждое открытие приносит дополнительные кредиты.",cost:170,alloy:5,artifacts:2},
+{id:"stability",name:"Стабилизатор разлома",tag:"АНОМАЛИИ",glyph:"⟐",desc:"Уменьшает расход энергии при входе в разлом.",cost:190,alloy:6,artifacts:2},
+{id:"deepScan",name:"Глубокий спектр",tag:"СКАНИРОВАНИЕ",glyph:"⌬",desc:"Сокращает число этапов миссии после изучения технологии.",cost:250,alloy:8,artifacts:3},
+{id:"singularity",name:"Теория сингулярности",tag:"ЭНДГЕЙМ",glyph:"◎",desc:"Увеличивает все награды экспедиции на 15%.",cost:400,alloy:12,artifacts:5}
+];
+const dailyKey=new Date().toISOString().slice(0,10);
+const defaults={energy:120,credits:80,alloy:0,artifacts:0,discoveries:0,level:1,progress:0,mission:0,sector:0,visited:[0],worlds:0,log:[],modules:{reactor:1,scanner:1,drive:1,extractor:1,shield:1,archive:1},tech:[],daily:{date:dailyKey,progress:0,claimed:false},sound:false,claimStamp:0,hull:1,anomalyCount:0};
+let state;try{state={...defaults,...JSON.parse(localStorage.getItem("nova-save")||"{}")}}catch{state={...defaults}}
+state.modules={...defaults.modules,...(state.modules||{})};state.visited=Array.isArray(state.visited)?state.visited:[0];state.log=Array.isArray(state.log)?state.log.slice(0,30):[];state.tech=Array.isArray(state.tech)?state.tech:[];state.daily=state.daily&&state.daily.date===dailyKey?state.daily:{...defaults.daily};
+let toastTimer,beepContext;
+function save(){try{localStorage.setItem("nova-save",JSON.stringify(state))}catch{}}
+function toast(s){const t=$("toast");t.textContent=s;t.classList.add("show");clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.classList.remove("show"),3000)}
+function beep(freq=440,duration=.08){if(!state.sound)return;try{const C=window.AudioContext||window.webkitAudioContext;beepContext=beepContext||new C();const o=beepContext.createOscillator(),g=beepContext.createGain();o.frequency.value=freq;o.type="sine";g.gain.value=.025;o.connect(g);g.connect(beepContext.destination);o.start();g.gain.exponentialRampToValueAtTime(.001,beepContext.currentTime+duration);o.stop(beepContext.currentTime+duration)}catch{}}
+function fmt(n){return Math.floor(n).toLocaleString("ru-RU")}
+function costModule(m){return {credits:Math.floor(m.base*Math.pow(1.72,state.modules[m.id]-1)),alloy:Math.max(0,m.alloy*(state.modules[m.id]))}}
+function bonus(){return state.tech.includes("singularity")?1.15:1}
+function addLog(title,detail,reward){state.log.unshift({title,detail,reward,time:new Date().toLocaleDateString("ru-RU")});state.log=state.log.slice(0,30)}
+function renderTop(){
+$("energy").textContent=fmt(state.energy);$("credits").textContent=fmt(state.credits);$("alloy").textContent=fmt(state.alloy);
+$("energyBar").style.width=Math.min(100,state.energy/(150+state.hull*50)*100)+"%";$("creditBar").style.width=Math.min(100,state.credits/500*100)+"%";$("alloyBar").style.width=Math.min(100,state.alloy/25*100)+"%";
+$("worldCount").textContent=String(state.worlds).padStart(2,"0");$("artifactCount").textContent=String(state.artifacts).padStart(2,"0");$("fleetRank").textContent=String(state.level).padStart(2,"0");$("captainRank").textContent="ПИЛОТ "+["I","II","III","IV","V","VI","VII","VIII"][Math.min(7,state.level-1)];$("sectorReadout").textContent="СЕКТОР "+sectors[state.sector].code;
+$("reactorLevel").textContent=String(state.modules.reactor).padStart(2,"0");$("shieldLevel").textContent=String(state.modules.shield).padStart(2,"0");$("driveLevel").textContent=String(state.modules.drive).padStart(2,"0");$("powerStat").textContent=Math.min(250,100+state.modules.reactor*8+state.hull*10)+"%";$("scanStat").textContent="УРОВЕНЬ "+state.modules.scanner;$("passiveStat").textContent=fmt(12*state.modules.extractor)+" CR";
+}
+function renderMission(){
+const m=missions[state.mission];$("missionCode").textContent=sectors[state.sector].code+(state.mission+1)+"A";$("missionTitle").textContent=m.title;$("missionTag").textContent=m.tag;$("missionText").textContent=m.text;$("reward").innerHTML="НАГРАДА <b>+"+Math.round(m.reward*bonus())+" EN · +"+Math.round(m.credits*bonus())+" CR</b>";$("progressLabel").textContent=state.progress+" / "+(state.tech.includes("deepScan")?2:3);$("progress").style.width=state.progress/(state.tech.includes("deepScan")?2:3)*100+"%";$("scanBtn").disabled=state.energy<10;$("scanBtn").innerHTML=(state.energy<10?"НЕТ ЭНЕРГИИ":state.progress===(state.tech.includes("deepScan")?1:2)?"Завершить анализ":"Сканировать")+" <span>↗</span>";
+}
+function renderDaily(){
+$("dailyProgress").textContent=state.daily.progress+" / 3";$("dailyBar").style.width=Math.min(100,state.daily.progress/3*100)+"%";$("dailyBtn").disabled=state.daily.claimed||state.daily.progress<3;$("dailyBtn").textContent=state.daily.claimed?"НАГРАДА ПОЛУЧЕНА":state.daily.progress<3?"Выполнить контракт":"Забрать награду";
+}
+function cardModule(m){const lvl=state.modules[m.id],cost=costModule(m);return '<article class="upgrade-card"><div class="upgrade-glyph">'+m.glyph+'</div><div class="upgrade-tag">'+m.tag+' · МОДУЛЬ</div><h3>'+m.name+'</h3><p>'+m.desc+'</p><div class="upgrade-level">'+Array.from({length:m.max},(_,i)=>'<i class="'+(i<lvl?"on":"")+'"></i>').join("")+'</div><div class="upgrade-footer"><div class="upgrade-price">'+(lvl>=m.max?"МАКС. УРОВЕНЬ":fmt(cost.credits)+" CR")+'<small>'+(lvl>=m.max?"МОДУЛЬ ПОЛНОСТЬЮ ИЗУЧЕН":fmt(cost.alloy)+" AL · УРОВЕНЬ "+lvl+"/"+m.max)+'</small></div><button class="btn btn-primary" data-buy-module="'+m.id+'" '+(lvl>=m.max?"disabled":"")+'>'+(lvl>=m.max?"Макс.":"Улучшить")+' <span>↗</span></button></div></article>'}
+function cardTech(t){const owned=state.tech.includes(t.id);return '<article class="upgrade-card"><div class="upgrade-glyph">'+t.glyph+'</div><div class="upgrade-tag">'+t.tag+' · ИССЛЕДОВАНИЕ</div><h3>'+t.name+'</h3><p>'+t.desc+'</p><div class="upgrade-level">'+Array.from({length:5},(_,i)=>'<i class="'+(owned||i<Math.min(5,Math.floor(state.level/2))?"on":"")+'"></i>').join("")+'</div><div class="upgrade-footer"><div class="upgrade-price">'+(owned?"ИЗУЧЕНО":fmt(t.cost)+" CR")+'<small>'+(owned?"ТЕХНОЛОГИЯ АКТИВНА":fmt(t.alloy)+" AL · "+t.artifacts+" ART)".replace(" ART)"," ART"))+'</small></div><button class="btn btn-primary" data-buy-tech="'+t.id+'" '+(owned?"disabled":"")+'>'+(owned?"Изучено":"Исследовать")+' <span>↗</span></button></div></article>'}
+function renderSectors(){$("sectorCount").textContent=state.visited.length+" / "+sectors.length;$("sectorGrid").innerHTML=sectors.map((s,i)=>{const seen=state.visited.includes(i),locked=i>state.level+1&&!state.tech.includes("mapping"),cost=Math.max(0,s.energy-Math.floor((state.modules.drive-1)*3));return '<article class="sector-card '+(locked?"locked ":"")+(seen?"visited":"")+'"><div class="sector-art" style="--planet-a:'+s.colors[0]+';--planet-b:'+s.colors[1]+';--planet-glow:'+s.colors[2]+'"><div class="sector-world"></div></div><div class="sector-body"><div class="sector-meta"><span>СЕКТОР '+s.code+'</span><b>'+(seen?"ОТКРЫТ":locked?"ЗАКРЫТ":"ДОСТУПЕН")+'</b></div><h3>'+s.name+'</h3><p>'+s.desc+'</p><div class="sector-footer"><span class="sector-cost">'+(i===state.sector?"ТЕКУЩИЙ":cost+" EN · "+s.credits+" CR")+'</span><button class="btn '+(i===state.sector?"btn-secondary":"btn-primary")+'" data-travel="'+i+'" '+(i===state.sector||locked?"disabled":"")+'>'+(i===state.sector?"Находишься здесь":locked?"Нужен ранг":"Прыжок ↗")+'</button></div></div></article>'}).join("")}
+function renderArchive(){
+$("logCount").textContent=state.log.length+" ЗАПИСЕЙ";$("logList").innerHTML=state.log.length?state.log.map(x=>'<article class="log-item"><div class="log-icon">◇</div><div><strong>'+x.title+'</strong><small>'+x.detail+'</small><div class="log-reward">'+x.time+' · '+x.reward+'</div></div></article>').join(""):'<div class="log-empty">Архив пуст. Первое открытие ещё впереди.</div>';
+$("archiveStats").innerHTML=[["МИССИИ",state.discoveries],["ПОСЕЩЕНО СЕКТОРОВ",state.visited.length],["АРТЕФАКТЫ",state.artifacts],["АНОМАЛИИ",state.anomalyCount]].map(x=>'<div class="archive-stat"><span>'+x[0]+'</span><b>'+fmt(x[1])+'</b></div>').join("");
+const ach=[["Первый контакт","Заверши первую миссию",state.discoveries>=1],["Путешественник","Посети три сектора",state.visited.length>=3],["Коллекционер","Найди пять артефактов",state.artifacts>=5],["Инженер","Улучши любой модуль до 4 уровня",Object.values(state.modules).some(x=>x>=4)],["Исследователь","Заверши десять миссий",state.discoveries>=10],["За гранью","Доберись до Нулевой точки",state.visited.includes(5)]];
+$("achievementList").innerHTML=ach.map(x=>'<div class="achievement '+(x[2]?"done":"")+'"><b>'+(x[2]?"✓ ":"") +x[0]+'</b><small>'+x[1]+'</small></div>').join("");
+}
+function render(){renderTop();renderMission();renderDaily();$("upgradeGrid").innerHTML=modules.map(cardModule).join("");$("techGrid").innerHTML=techs.map(cardTech).join("");$("techCount").textContent=state.tech.length+" / "+techs.length;$("hullCost").textContent=fmt(250*state.hull)+" CR · "+fmt(12*state.hull)+" AL";$("hullBtn").disabled=state.credits<250*state.hull||state.alloy<12*state.hull;$("claimBtn").textContent="Собрать добычу +"+fmt(12*state.modules.extractor)+" CR";renderSectors();renderArchive();$("soundBtn").textContent=state.sound?"ЗВУК ВКЛ":"ЗВУК ВЫКЛ";save()}
+function setTab(tab){document.querySelectorAll(".tab").forEach(b=>b.classList.toggle("active",b.dataset.tab===tab));document.querySelectorAll(".view").forEach(v=>v.classList.toggle("active",v.id==="view-"+tab));if(tab==="map")renderSectors();if(tab==="hangar"||tab==="lab")render();if(tab==="archive")renderArchive()}
+function completeMission(){
+const m=missions[state.mission],mult=bonus();const en=Math.round(m.reward*mult*(1+state.modules.archive*.04)),cr=Math.round(m.credits*mult*(1+state.modules.archive*.04));
+state.energy+=en;state.credits+=cr;state.alloy+=m.alloy+(state.tech.includes("resonance")?1:0);state.discoveries++;state.worlds+=Math.random()<.55?1:0;if(Math.random()<.5)state.artifacts++;state.level=1+Math.floor(state.discoveries/2);state.daily.progress=Math.min(3,state.daily.progress+1);addLog(m.name,m.detail,"+"+en+" EN · +"+cr+" CR · +"+m.alloy+" AL");state.progress=0;state.mission=(state.mission+1)%missions.length;
+$("result").textContent="ОБНАРУЖЕНО: "+m.name+" · НАГРАДА +"+en+" EN / +"+cr+" CR";beep(780,.2);showModal("Открытие подтверждено",m.detail,"+"+en+" EN · +"+cr+" CR · +"+m.alloy+" AL");toast("Миссия завершена. Материалы внесены в трюм.");}
+function scan(){const needed=state.tech.includes("deepScan")?2:3;if(state.energy<10){toast("Недостаточно энергии. Собери добычу или используй реактор.");return}state.energy-=10;state.progress++;beep(300+state.progress*100);const card=$("missionSection");if(card){const p=document.querySelector(".mission-panel");p.classList.remove("scanning");void p.offsetWidth;p.classList.add("scanning");setTimeout(()=>p.classList.remove("scanning"),1000)}if(state.progress>=needed)completeMission();else{$("result").textContent=state.progress===1?"Сканер калибруется. Первый пакет данных получен…":"Сигнал усиливается. Координаты почти определены…";toast("Сканирование "+state.progress+"/"+needed+" — продолжай анализ.");}render(); }
+function showModal(title,desc,reward){$("modalBody").innerHTML="<h2>"+title+"</h2><p>"+desc+"</p><div class='modal-reward'>"+reward+"</div><button class='btn btn-primary' data-close-modal>Продолжить экспедицию <span>↗</span></button>";$("modal").classList.add("open");$("modal").setAttribute("aria-hidden","false")}
+function closeModal(){$("modal").classList.remove("open");$("modal").setAttribute("aria-hidden","true")}
+$("scanBtn").addEventListener("click",scan);
+$("launchBtn").addEventListener("click",()=>{setTab("map");document.getElementById("view-map").scrollIntoView({behavior:"smooth",block:"start"});toast("Навигационная карта готова. Выбери точку прыжка.");});
+$("claimBtn").addEventListener("click",()=>{const now=Date.now();if(now-state.claimStamp<45000){toast("Добывающие зонды перезаряжаются. Подожди "+Math.ceil((45000-(now-state.claimStamp))/1000)+" сек.");return}state.claimStamp=now;const cr=12*state.modules.extractor, en=Math.max(3,state.modules.reactor*2);state.credits+=cr;state.energy+=en;beep(600);toast("Зонды вернулись: +"+cr+" CR и +"+en+" EN.");render()});
+$("soundBtn").addEventListener("click",()=>{state.sound=!state.sound;render();beep(520)});
+$("dailyBtn").addEventListener("click",()=>{if(state.daily.claimed||state.daily.progress<3)return;state.daily.claimed=true;state.alloy+=5;state.artifacts+=1;state.credits+=100;showModal("Контракт выполнен","Три исследовательских операции завершены. Лаборатория получила редкий образец.","+5 AL · +1 ART · +100 CR");render()});
+$("anomalyBtn").addEventListener("click",()=>{const cost=state.tech.includes("stability")?15:25;if(state.energy<cost){toast("Для входа нужно "+cost+" энергии.");return}state.energy-=cost;state.anomalyCount++;const chance=Math.random();let reward;if(chance<.5){state.credits+=100+state.level*15;state.artifacts+=1;reward="+1 ART · +"+(100+state.level*15)+" CR";}else if(chance<.82){state.alloy+=5+state.modules.shield;reward="+"+(5+state.modules.shield)+" AL";}else{state.energy+=90;state.artifacts+=2;reward="+90 EN · +2 ART";}addLog("Разлом Эйдоса","Аномалия стабилизирована. Получено: "+reward,reward);beep(880,.2);showModal("Разлом пройден","Корабль прошёл сквозь нестабильное поле. Содержимое капсулы случайно.",reward);render()});
+$("hullBtn").addEventListener("click",()=>{const c=250*state.hull,a=12*state.hull;if(state.credits<c||state.alloy<a){toast("Недостаточно ресурсов для корпуса.");return}state.credits-=c;state.alloy-=a;state.hull++;state.level=Math.max(state.level,state.hull);showModal("Корпус улучшен","Установлены новые бронепластины и усилены контуры энергосистемы.","КЛАСС "+state.hull+" · ЁМКОСТЬ УВЕЛИЧЕНА");render()});
+$("craftAlloy").addEventListener("click",()=>{if(state.energy<100){toast("Нужно 100 энергии.");return}state.energy-=100;state.alloy+=4;toast("Реактор переработал энергию в 4 сплава.");render()});
+$("craftCredits").addEventListener("click",()=>{if(state.alloy<5){toast("Нужно 5 единиц сплава.");return}state.alloy-=5;state.credits+=90;toast("Сплав продан: +90 кредитов.");render()});
+$("resetBtn").addEventListener("click",()=>{if(!confirm("Точно сбросить всю экспедицию? Это удалит локальное сохранение."))return;localStorage.removeItem("nova-save");location.reload()});
+document.querySelectorAll(".tab").forEach(b=>b.addEventListener("click",()=>setTab(b.dataset.tab)));
+document.querySelectorAll("[data-open-tab]").forEach(b=>b.addEventListener("click",()=>setTab(b.dataset.openTab)));
+document.addEventListener("click",e=>{
+const close=e.target.closest("[data-close-modal]");if(close){closeModal();return}
+const mod=e.target.closest("[data-buy-module]");if(mod){const m=modules.find(x=>x.id===mod.dataset.buyModule);const cost=costModule(m),lvl=state.modules[m.id];if(lvl>=m.max){toast("Модуль уже максимального уровня.");return}if(state.credits<cost.credits||state.alloy<cost.alloy){toast("Не хватает ресурсов: "+cost.credits+" CR и "+cost.alloy+" AL.");return}state.credits-=cost.credits;state.alloy-=cost.alloy;state.modules[m.id]++;beep(660);toast(m.name+" улучшен до уровня "+state.modules[m.id]+".");render();return}
+const te=e.target.closest("[data-buy-tech]");if(te){const t=techs.find(x=>x.id===te.dataset.buyTech);if(state.tech.includes(t.id))return;if(state.credits<t.cost||state.alloy<t.alloy||state.artifacts<t.artifacts){toast("Нужно "+t.cost+" CR, "+t.alloy+" AL и "+t.artifacts+" ART.");return}state.credits-=t.cost;state.alloy-=t.alloy;state.artifacts-=t.artifacts;state.tech.push(t.id);showModal("Технология изучена",t.name+" теперь действует на все последующие экспедиции.","ТЕХНОЛОГИЯ АКТИВИРОВАНА");render();return}
+const tr=e.target.closest("[data-travel]");if(tr){const i=Number(tr.dataset.travel),s=sectors[i];if(i===state.sector)return;if(i>state.level+1&&!state.tech.includes("mapping")){toast("Сектор закрыт. Повышай ранг или изучи картографию.");return}const cost=Math.max(0,s.energy-Math.floor((state.modules.drive-1)*3));if(state.energy<cost||state.credits<s.credits||state.alloy<s.alloy){toast("Прыжок требует "+cost+" EN, "+s.credits+" CR и "+s.alloy+" AL.");return}state.energy-=cost;state.credits-=s.credits;state.alloy-=s.alloy;state.sector=i;if(!state.visited.includes(i)){state.visited.push(i);state.worlds+=s.worlds;state.artifacts+=i>=3?1:0;addLog("Сектор "+s.name,"Первичное исследование системы "+s.code,"+"+s.worlds+" миров");showModal("Прыжок завершён","Ты прибыл в сектор "+s.name+". Новая система добавлена на карту.", "+"+s.worlds+" МИРОВ · "+(i>=3?"+1 ART":"РАЗВЕДКА"));}else toast("Координаты обновлены: "+s.name+".");beep(520,.15);render();setTab("map");return}
+});
+document.addEventListener("keydown",e=>{if(e.key==="Escape")closeModal()});
+render();
 })();
