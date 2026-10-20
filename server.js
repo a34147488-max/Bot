@@ -65,7 +65,7 @@ app.post('/telegram-webhook',async(req,res)=>{
     await pool.query('INSERT INTO anon_sessions(sender_id,recipient_id,expires_at) VALUES($1,$2,NOW()+INTERVAL \'24 hours\') ON CONFLICT(sender_id) DO UPDATE SET recipient_id=EXCLUDED.recipient_id,expires_at=EXCLUDED.expires_at',[String(chatId),target]);
     await telegram('sendMessage',{chat_id:chatId,text:'Напиши одно анонимное сообщение в ответ на это сообщение. Твоё имя и профиль не будут показаны получателю.'});return;
    }
-   await telegram('sendMessage',{chat_id:chatId,text:'Привет! Здесь можно отправить анонимное сообщение по персональной ссылке. Открой мини-приложение кнопкой ниже, чтобы получить свою ссылку.',reply_markup:{inline_keyboard:[[{text:'Открыть приложение',web_app:{url:APP_URL}}]]}});return;
+   await telegram('sendMessage',{chat_id:chatId,text:'Привет! Что-бы получить анонимное сообщение, зайди в приложение и получи свою ссылку🍷',reply_markup:{inline_keyboard:[[{text:'Открыть приложение',web_app:{url:APP_URL}}]]}});return;
   }
   if(text.startsWith('/'))return;
   const session=await pool.query('SELECT recipient_id FROM anon_sessions WHERE sender_id=$1 AND expires_at>NOW()',[String(chatId)]);
