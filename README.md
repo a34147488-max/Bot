@@ -24,7 +24,7 @@ Default model: `minimax/h3-max/text-to-video` on fal.ai. At the standard publish
 1. Create a Telegram bot with [@BotFather](https://t.me/BotFather) and copy its token.
 2. Create an account at [fal.ai](https://fal.ai), add billing/credits, and create an API key.
 3. Add a PostgreSQL database to Railway. Copy its connection URL into `DATABASE_URL`.
-4. Create a Railway service from this repository. Set its **Root Directory** to `/video-bot`.
+4. Create a Railway service from this repository. Set its **Root Directory** to `/` (the `bot.js` and `package.json` files are in the repository root).
 5. Add these variables to the service:
    - `BOT_TOKEN`: token from BotFather
    - `FAL_KEY`: fal API key
