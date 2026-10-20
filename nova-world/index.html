@@ -1,36 +1,30 @@
 <!doctype html>
 <html lang="ru">
 <head>
-  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-  <meta name="theme-color" content="#080b18"><meta name="description" content="NOVA — маленькая космическая экспедиция прямо в браузере">
-  <title>NOVA — Космическая экспедиция</title><link rel="stylesheet" href="style.css">
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#070911"><meta name="description" content="NOVA — исследуй галактику, открывай планеты и собирай артефакты.">
+<title>NOVA — Beyond the known</title><link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <div class="stars" aria-hidden="true"></div>
-  <main class="app">
-    <header class="top"><a class="brand" href="#" aria-label="NOVA home"><span class="brand-mark">✦</span><span>NOVA<span class="muted"> / EXPLORER</span></span></a><div class="status"><i></i> СИСТЕМА АКТИВНА</div></header>
-    <section class="hero">
-      <div class="eyebrow"><span class="line"></span> БОРТОВОЙ ЖУРНАЛ · 001</div>
-      <h1>Там, где<br><em>начинается</em> космос.</h1>
-      <p class="intro">Исследуй неизвестные миры. Собирай энергию. Построй свою маленькую легенду среди звёзд.</p>
-      <div class="planet-wrap"><div class="orbit orbit-one"></div><div class="orbit orbit-two"></div><div class="planet"><div class="planet-shade"></div><div class="planet-ring"></div></div><div class="satellite">✦</div><div class="spark s1">✧</div><div class="spark s2">·</div></div>
-    </section>
-    <section class="stats">
-      <article class="stat"><span class="label">ЭНЕРГИЯ</span><strong id="energy">120</strong><small>⚡ единиц</small></article>
-      <article class="stat"><span class="label">ОТКРЫТИЯ</span><strong id="discoveries">0</strong><small>✧ найдено миров</small></article>
-      <article class="stat"><span class="label">УРОВЕНЬ</span><strong id="level">01</strong><small id="levelName">Новичок</small></article>
-    </section>
-    <section class="mission">
-      <div class="section-head"><div><div class="eyebrow">ТВОЯ СЛЕДУЮЩАЯ ЦЕЛЬ</div><h2 id="missionTitle">Сигнал из туманности</h2></div><span class="mission-index">М-01</span></div>
-      <p id="missionText">Настрой сканер и найди источник загадочного сигнала в глубоком космосе.</p>
-      <div class="progress-track"><div id="progress" class="progress-fill"></div></div><div class="progress-meta"><span id="progressLabel">0 / 3 действия</span><span id="progressPct">0%</span></div>
-      <button id="scanBtn" class="primary"><span>Начать сканирование</span><span class="arrow">↗</span></button>
-      <div id="result" class="result" role="status" aria-live="polite"></div>
-    </section>
-    <section class="log">
-      <div class="section-head"><div><div class="eyebrow">ПАМЯТЬ КОРАБЛЯ</div><h2>Хроника экспедиции</h2></div><span class="live-dot"></span></div>
-      <div id="logList" class="log-list"><div class="empty"><span>✧</span><p>Тишина космоса. Твоё первое открытие ещё впереди.</p></div></div>
-    </section>
-    <footer><span>NOVA EXPLORER</span><span>СОЗДАНО ДЛЯ ЛЮБОПЫТНЫХ <b>✦</b></span></footer>
-  </main><script src="app.js"></script>
+<div class="space-noise"></div><div class="stars stars-a"></div><div class="stars stars-b"></div>
+<main class="shell">
+<header class="nav"><a class="logo" href="#"><span class="logo-icon">N</span><span>NOVA<span class="logo-sub"> / DEEP SPACE</span></span></a><div class="nav-right"><span class="online"><i></i> ONLINE</span><button id="soundBtn" class="icon-btn" aria-label="Переключить звук">◖</button></div></header>
+<section class="hero">
+<div class="hero-copy"><div class="kicker"><span class="kicker-line"></span> YOUR NEXT FRONTIER <span class="kicker-num">NO. 001</span></div>
+<h1>THE UNIVERSE<br>IS <span>NOT</span> EMPTY.</h1>
+<p class="lead">Там, где заканчиваются карты, начинается твоя история. Исследуй неизведанное — один прыжок за другим.</p>
+<div class="hero-actions"><button id="startBtn" class="btn btn-primary">Начать экспедицию <span>↗</span></button><div class="micro"><span class="pulse"></span><span>СИГНАЛ ОБНАРУЖЕН<br><b>СЕКТОР N-07</b></span></div></div></div>
+<div class="visual"><div class="visual-grid"></div><div class="orbit orbit-1"></div><div class="orbit orbit-2"></div><div class="orbit orbit-3"></div><div class="planet"><div class="planet-cloud cloud-a"></div><div class="planet-cloud cloud-b"></div><div class="planet-glow"></div></div><div class="planet-moon"></div><div class="target"><span></span></div><div class="coord coord-top">43° 09' N<br>71° 22' E</div><div class="coord coord-bottom">KEPLER-186F <span>• 12.4 LY</span></div><div class="crosshair cross-a">+</div><div class="crosshair cross-b">+</div></div>
+<div class="hero-index">01 <span>/ 05</span></div>
+</section>
+<section class="dashboard">
+<div class="panel resource-panel"><div class="panel-label">КОРПУС / РЕСУРСЫ <span class="live">LIVE</span></div><div class="resource-main"><div class="resource-symbol">✳</div><div><div class="resource-number" id="energy">120</div><div class="resource-caption">КОСМИЧЕСКАЯ ЭНЕРГИЯ</div></div><div class="resource-level"><small>РАНГ</small><b id="level">01</b></div></div><div class="energy-track"><span id="energyBar"></span></div><div class="resource-foot"><span>ЗАРЯД КОРАБЛЯ</span><b id="energyPct">80%</b></div></div>
+<div class="panel discovery-panel"><div class="panel-label">СТАТИСТИКА <span class="tiny-star">✦</span></div><div class="discovery-num" id="discoveries">00</div><div class="discovery-caption">МИРОВ ОТКРЫТО</div><div class="mini-bars"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><div class="discovery-bottom">ЖУРНАЛ ИССЛЕДОВАНИЙ <span>↗</span></div></div>
+</section>
+<section class="mission-section" id="missionSection"><div class="section-title"><div><div class="kicker">MISSION CONTROL / <span id="missionNumber">01</span></div><h2>Текущая миссия</h2></div><div class="mission-status"><i></i> В ПРОЦЕССЕ</div></div>
+<div class="mission-card"><div class="mission-art"><div class="mini-planet"></div><div class="mini-orbit"></div><div class="art-label">NOVA<br><span>EXPLORATION UNIT</span></div></div><div class="mission-info"><div class="mission-type">ГЛАВНАЯ ЦЕЛЬ · <span id="missionTag">РАЗВЕДКА</span></div><h3 id="missionTitle">Сигнал из туманности</h3><p id="missionText">Неизвестный импульс пробился сквозь космический шум. Определи источник и занеси находку в журнал.</p><div class="mission-progress"><div class="progress-top"><span>ПРОГРЕСС МИССИИ</span><b id="progressLabel">0 / 3</b></div><div class="progress-track"><span id="progress"></span></div></div><div class="mission-bottom"><span id="reward">НАГРАДА <b>+35 EN</b></span><button id="scanBtn" class="btn btn-primary">Сканировать <span>↗</span></button></div><div id="result" class="result" role="status" aria-live="polite"></div></div></div>
+</section>
+<section class="log-section"><div class="section-title"><div><div class="kicker">FLIGHT RECORDER / LOG</div><h2>Хроника открытий</h2></div><span class="log-count" id="logCount">0 ЗАПИСЕЙ</span></div><div id="logList" class="log-list"><div class="log-empty"><span>—</span> Журнал пуст. Первое открытие ждёт тебя.</div></div></section>
+<footer><a class="footer-logo" href="#">NOVA<span>®</span></a><span>MADE FOR THE UNKNOWN</span><span class="footer-coord">DEEP SPACE DIVISION · 2026</span></footer>
+</main><script src="app.js"></script>
 </body></html>
