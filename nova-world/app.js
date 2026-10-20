@@ -19,7 +19,9 @@
   function save(){try{localStorage.setItem("nova-save",JSON.stringify(state))}catch{}}
   function esc(s){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
   function render(){
+    const previousEnergy=$("energy").textContent;
     $("energy").textContent=state.energy.toLocaleString("ru-RU");
+    if(previousEnergy!==$("energy").textContent){$("energy").classList.remove("value-pop");void $("energy").offsetWidth;$("energy").classList.add("value-pop");}
     $("energyBar").style.width=Math.min(100,state.energy/150*100)+"%";
     $("energyPct").textContent=Math.min(100,Math.round(state.energy/150*100))+"%";
     $("discoveries").textContent=String(state.discoveries).padStart(2,"0");
@@ -42,14 +44,16 @@
   $("scanBtn").addEventListener("click",()=>{
     if(state.energy<10){$("result").textContent="Энергии недостаточно. Заверши доступные действия позже.";return}
     state.energy-=10;state.progress++;beep(310+state.progress*100);
+    const card=$("missionSection").querySelector(".mission-card");card.classList.remove("scanning","completed");void card.offsetWidth;card.classList.add("scanning");setTimeout(()=>card.classList.remove("scanning"),1150);
     if(state.progress<3){$("result").textContent=["Сканер калибруется. Получен первый пакет данных…","Сигнал усиливается. Координаты почти определены…"][state.progress-1]}
     else{
       const m=missions[state.mission];state.energy+=m.reward;state.discoveries++;state.log.unshift({title:m.name,detail:m.detail,reward:m.reward});state.log=state.log.slice(0,8);state.level=1+Math.floor(state.discoveries/2);state.progress=0;state.mission=(state.mission+1)%missions.length;
+      card.classList.remove("scanning");card.classList.add("completed");setTimeout(()=>card.classList.remove("completed"),900);
       $("result").textContent="ОТКРЫТИЕ ПОДТВЕРЖДЕНО — "+m.name+". Получено +"+m.reward+" энергии.";beep(720,.18);
     }
     save();render();
   });
-  $("startBtn").addEventListener("click",()=>{$("missionSection").scrollIntoView({behavior:"smooth",block:"start"});setTimeout(()=>$("scanBtn").focus({preventScroll:true}),350)});
+  $("startBtn").addEventListener("click",()=>{$("missionSection").scrollIntoView({behavior:"smooth",block:"start"});const card=$("missionSection").querySelector(".mission-card");card.classList.remove("scanning");void card.offsetWidth;card.classList.add("scanning");setTimeout(()=>card.classList.remove("scanning"),1150);setTimeout(()=>$("scanBtn").focus({preventScroll:true}),350)});
   $("soundBtn").addEventListener("click",()=>{state.sound=!state.sound;save();render();if(state.sound)beep(520)});
   render();
 })();
