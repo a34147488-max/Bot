@@ -14,7 +14,7 @@
 <div class="foot">Сообщения отправляются через Telegram-бота. Не публикуй личные данные.</div>
 </main><div class="toast" id="toast"></div>
 <script>
-const API_BASE = new URLSearchParams(location.search).get('api') || '';
+const API_BASE = new URLSearchParams(location.search).get('api') || (location.hostname.endsWith('github.io') ? '' : location.origin);
 const tg = window.Telegram?.WebApp;
 if(tg){tg.ready();tg.expand();document.body.style.background='#f4f6f9'}
 const $=id=>document.getElementById(id);let myLink='';
@@ -22,7 +22,7 @@ function toast(t){$('toast').textContent=t;$('toast').classList.add('show');setT
 function escapeHtml(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 async function boot(){
  const initData=tg?.initData||'';
- if(!API_BASE){$('username').textContent='Ожидает подключения бота';$('subline').textContent='Интерфейс готов, сервер ещё не настроен';return}
+ if(!API_BASE){$('username').textContent='Открой через Telegram';$('subline').textContent='Запусти @generateii_bot и нажми «Открыть приложение»';$('status').textContent='OFFLINE';return}
  try{
   const res=await fetch(API_BASE+'/api/me',{headers:{'X-Telegram-Init-Data':initData}});
   if(!res.ok)throw new Error('Не удалось подключиться');
