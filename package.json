@@ -1,9 +1,9 @@
 {
-  "name": "telegram-ai-video-bot",
-  "version": "1.0.0",
+  "name": "telegram-phone-lookup-bot",
+  "version": "2.0.0",
   "private": true,
   "type": "module",
-  "description": "Telegram bot for 3D animated text-to-video generation with free quota, Telegram Stars payments, PostgreSQL and admin controls",
+  "description": "Standalone Telegram bot for phone number format checks and public web search links; no worker or database",
   "scripts": {
     "start": "node bot.js",
     "check": "node --check bot.js"
@@ -13,7 +13,6 @@
   },
   "dependencies": {
     "grammy": "^1.35.0",
-    "pg": "^8.13.1",
     "dotenv": "^16.4.7"
   }
 }
