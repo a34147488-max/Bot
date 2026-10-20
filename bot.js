@@ -1,24 +1,21 @@
 import "dotenv/config";
-import { Bot, InlineKeyboard } from "grammy";
-import { fal } from "@fal-ai/client";
+import { Bot, InlineKeyboard, InputFile } from "grammy";
 import pg from "pg";
 
 const { Pool } = pg;
 const TOKEN = process.env.BOT_TOKEN;
-const FAL_KEY = process.env.FAL_KEY;
+const GPU_WORKER_URL = (process.env.GPU_WORKER_URL || "").replace(/\/$/, "");
+const GPU_WORKER_TOKEN = process.env.GPU_WORKER_TOKEN || "";
 const DATABASE_URL = process.env.DATABASE_URL;
 const ADMINS = new Set((process.env.ADMIN_IDS || "").split(",").map(x => x.trim()).filter(Boolean));
 const FREE_LIMIT = Math.max(0, Number.parseInt(process.env.FREE_LIMIT || "3", 10));
-const MODEL = process.env.FAL_MODEL || "minimax/h3-max/text-to-video";
-const IMAGE_MODEL = process.env.FAL_IMAGE_MODEL || "minimax/h3-max/image-to-video";
-const RESOLUTION = process.env.VIDEO_RESOLUTION || "480P";
+const MODEL = "Wan2.1-T2V-1.3B";
 const POLL_MS = Math.max(3000, Number(process.env.POLL_MS || "7000"));
 const MAX_PROMPT = 1800;
-if (!TOKEN || !FAL_KEY || !DATABASE_URL) {
-  console.error("Missing BOT_TOKEN, FAL_KEY or DATABASE_URL");
+if (!TOKEN || !DATABASE_URL || !GPU_WORKER_URL || !GPU_WORKER_TOKEN) {
+  console.error("Missing BOT_TOKEN, DATABASE_URL, GPU_WORKER_URL or GPU_WORKER_TOKEN");
   process.exit(1);
 }
-fal.config({ credentials: FAL_KEY });
 const pool = new Pool({
   connectionString: DATABASE_URL,
   ssl: process.env.PGSSLMODE === "require" ? { rejectUnauthorized: false } : undefined,
@@ -117,23 +114,25 @@ async function generate(ctx, prompt, duration, imageUrl = null) {
   if (busyUsers.has(uid)) return ctx.reply("У тебя уже есть активный запрос. Дождись результата.");
   busyUsers.add(uid);
   try {
-    const modelId = imageUrl ? IMAGE_MODEL : MODEL;
-    const reserved = await reserve(ctx.from, prompt, duration, imageUrl, modelId);
+    if (imageUrl) {
+      return ctx.reply("Оживление фото пока не подключено к локальному worker. Генерация по тексту уже направляется в Wan2.1; фото-режим включим после добавления I2V-модели и endpoint загрузки изображения.");
+    }
+    const reserved = await reserve(ctx.from, prompt, duration, null, MODEL);
     if (!reserved) return ctx.reply("Бесплатные попытки закончились. Выбери пакет дополнительных генераций:", { reply_markup: buyKeyboard() });
-    await ctx.reply("Запрос принят. Генерирую 3D-анимацию на " + duration + " секунд. Обычно это занимает несколько минут. Если API вернёт ошибку, попытка будет восстановлена.");
+    await ctx.reply("Запрос принят. Отправляю его собственной модели Wan2.1. Генерация может занять несколько минут; не выключай GPU-worker.");
     try {
-      const input = {
-        prompt: "High-quality stylized 3D animated film, polished 3D character design, expressive characters, detailed materials, cinematic lighting, smooth natural motion, coherent camera movement, professional family animation, no subtitles, no on-screen text. Scene description: " + prompt,
-        enable_safety_checker: true
-      };
-      if (imageUrl) input.image_url = imageUrl;
-      else { input.duration = duration; input.resolution = RESOLUTION; input.aspect_ratio = "16:9"; input.prompt_expansion_mode = "balanced"; }
-      const submitted = await fal.queue.submit(modelId, { input });
-      await pool.query("UPDATE video_bot_jobs SET request_id=$2,status='queued',updated_at=NOW() WHERE id=$1", [reserved.id, submitted.request_id]);
+      const response = await fetch(GPU_WORKER_URL + "/jobs", {
+        method: "POST",
+        headers: { "content-type": "application/json", "X-GPU-Worker-Token": GPU_WORKER_TOKEN },
+        body: JSON.stringify({ prompt: "High-quality stylized 3D animated film, polished 3D character design, expressive characters, detailed materials, cinematic lighting, smooth natural motion, coherent camera movement, no subtitles, no on-screen text. Scene description: " + prompt, duration })
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || !data.id) throw new Error(data.detail || ("GPU worker HTTP " + response.status));
+      await pool.query("UPDATE video_bot_jobs SET request_id=$2,status='queued',updated_at=NOW() WHERE id=$1", [reserved.id, data.id]);
     } catch (e) {
       await refund(reserved.id, uid, reserved.source, e?.message || e);
-      await ctx.reply("Не удалось отправить запрос в видеосервис. Попытка возвращена. Попробуй позже.");
-      console.error("fal submit failed", e);
+      await ctx.reply("Не удалось связаться с собственным GPU-worker. Попытка возвращена. Проверь, что worker запущен, модель установлена, а GPU_WORKER_URL и GPU_WORKER_TOKEN заданы в Railway.");
+      console.error("GPU worker submit failed", e);
     }
   } catch (e) {
     console.error("Generate failed", e);
@@ -280,8 +279,9 @@ bot.on("message:photo", async ctx => {
     const response = await fetch("https://api.telegram.org/file/bot" + TOKEN + "/" + tgFile.file_path);
     if (!response.ok) throw new Error("Telegram image download failed");
     const bytes = Buffer.from(await response.arrayBuffer());
-    const uploaded = await fal.storage.upload(new File([bytes], "source-image.jpg", { type: "image/jpeg" }));
-    states.set(uid, { step: "photo_prompt", imageUrl: uploaded });
+    states.set(uid, { step: "photo_prompt", imageUrl: "telegram-photo:" + photo.file_id });
+    await ctx.reply("Фото получено. Внимание: I2V (оживление фото) ещё не реализовано в GPU-worker; текстовая генерация работает отдельно."); 
+    return;
     await ctx.reply("Теперь опиши, что должно происходить на фото: движение персонажа, камеры, окружения или атмосфера. Например: «Персонаж улыбается, ветер слегка шевелит волосы, камера плавно приближается».");
   } catch (e) {
     console.error("Photo upload failed", e);
@@ -318,28 +318,26 @@ async function pollJobs() {
     const jobs = await pool.query("SELECT * FROM video_bot_jobs WHERE status IN ('queued','processing') AND request_id IS NOT NULL ORDER BY created_at ASC LIMIT 10");
     for (const job of jobs.rows) {
       try {
-        const modelId = job.model_id || MODEL;
-        const s = await fal.queue.status(modelId, { requestId: job.request_id, logs: false });
-        if (s.status === "IN_QUEUE" || s.status === "IN_PROGRESS") {
+        const response = await fetch(GPU_WORKER_URL + "/jobs/" + encodeURIComponent(job.request_id), {
+          headers: { "X-GPU-Worker-Token": GPU_WORKER_TOKEN }
+        });
+        if (!response.ok) throw new Error("GPU worker status HTTP " + response.status);
+        const s = await response.json();
+        if (s.status === "queued" || s.status === "processing") {
           if (job.status !== "processing") await pool.query("UPDATE video_bot_jobs SET status='processing',updated_at=NOW() WHERE id=$1", [job.id]);
           continue;
         }
-        if (s.status === "COMPLETED") {
-          const out = await fal.queue.result(modelId, { requestId: job.request_id });
-          const url = out?.data?.video?.url;
-          if (!url) throw new Error("API returned no video URL");
-          const done = await pool.query("UPDATE video_bot_jobs SET status='completed',video_url=$2,updated_at=NOW() WHERE id=$1 AND status IN ('queued','processing') RETURNING id", [job.id, url]);
-          if (done.rowCount) {
-            try {
-              await bot.api.sendVideo(String(job.telegram_id), url, { caption: "Готово! Твоя 3D-анимация на " + job.duration + " сек.\nID задачи: " + job.id, supports_streaming: true });
-            } catch (e) {
-              await bot.api.sendMessage(String(job.telegram_id), "Видео готово, но Telegram не смог прикрепить его файлом. Вот ссылка: " + url);
-              console.error("sendVideo failed", e);
-            }
-          }
-        } else if (s.status === "FAILED" || s.status === "CANCELLED") {
-          await refund(job.id, job.telegram_id, job.credit_source, s.error || s.status);
-          await bot.api.sendMessage(String(job.telegram_id), "Не удалось сгенерировать видео. Попытка возвращена на баланс. Попробуй изменить описание.");
+        if (s.status === "completed") {
+          const videoResponse = await fetch(GPU_WORKER_URL + "/jobs/" + encodeURIComponent(job.request_id) + "/video", {
+            headers: { "X-GPU-Worker-Token": GPU_WORKER_TOKEN }
+          });
+          if (!videoResponse.ok) throw new Error("GPU worker video download HTTP " + videoResponse.status);
+          const videoBuffer = Buffer.from(await videoResponse.arrayBuffer());
+          const done = await pool.query("UPDATE video_bot_jobs SET status='completed',video_url=$2,updated_at=NOW() WHERE id=$1 AND status IN ('queued','processing') RETURNING id", [job.id, "local-worker:" + job.request_id]);
+          if (done.rowCount) await bot.api.sendVideo(String(job.telegram_id), new InputFile(videoBuffer, "generated-video.mp4"), { caption: "Готово! Видео создано собственной моделью Wan2.1.\nID задачи: " + job.id, supports_streaming: true });
+        } else if (s.status === "failed") {
+          await refund(job.id, job.telegram_id, job.credit_source, s.error || "Wan2.1 generation failed");
+          await bot.api.sendMessage(String(job.telegram_id), "Wan2.1 не смог создать видео. Попытка возвращена на баланс. Проверь логи GPU-worker.");
         }
       } catch (e) { console.error("Poll job failed", job.id, e); }
     }
@@ -348,7 +346,7 @@ async function pollJobs() {
 }
 bot.catch(err => console.error("Telegram bot error", err));
 await initDb();
-bot.start({ onStart: info => console.log("Bot @" + info.username + " started; model=" + MODEL + "; freeLimit=" + FREE_LIMIT) });
+bot.start({ onStart: info => console.log("Bot @" + info.username + " started; backend=Wan2.1 GPU worker; freeLimit=" + FREE_LIMIT) });
 setInterval(() => { void pollJobs(); }, POLL_MS);
 void pollJobs();
 process.once("SIGINT", async () => { await bot.stop(); await pool.end(); process.exit(0); });
