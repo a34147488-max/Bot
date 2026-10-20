@@ -4,11 +4,13 @@ const { Pool } = require('pg');
 
 const app = express();
 app.use(express.json({limit:'64kb'}));
+app.use(express.static(path.join(__dirname), { index: 'index.html', dotfiles: 'ignore' }));
 const PORT = process.env.PORT || 3000;
 const BOT_TOKEN = process.env.BOT_TOKEN;
 const BOT_USERNAME = (process.env.BOT_USERNAME || '').replace(/^@/,'');
 const WEBHOOK_SECRET = process.env.WEBHOOK_SECRET;
-const APP_URL = process.env.APP_URL || 'https://a34147488-max.github.io/Bot/';
+const APP_URL = process.env.APP_URL || (process.env.RAILWAY_PUBLIC_DOMAIN ? 'https://' + process.env.RAILWAY_PUBLIC_DOMAIN : 'https://a34147488-max.github.io/Bot/');
+const path = require('path');
 const pool = new Pool({ connectionString: process.env.DATABASE_URL, ssl: process.env.DATABASE_URL && !/localhost|127\.0\.0\.1/.test(process.env.DATABASE_URL) ? { rejectUnauthorized:false } : false });
 
 async function initDb(){
