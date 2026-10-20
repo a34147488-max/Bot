@@ -1,4 +1,4 @@
-name: Deploy Shelter Game to GitHub Pages
+name: Deploy Anonymous Messages UI to GitHub Pages
 
 on:
   push:
@@ -25,7 +25,7 @@ jobs:
         uses: actions/checkout@v4
       - name: Configure Pages
         uses: actions/configure-pages@v5
-      - name: Prepare game site
+      - name: Prepare anonymous app site
         run: |
           mkdir -p public
           cp index.html public/index.html
