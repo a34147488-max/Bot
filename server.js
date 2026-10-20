@@ -9,7 +9,7 @@ const PORT = process.env.PORT || 3000;
 const BOT_TOKEN = process.env.BOT_TOKEN;
 const BOT_USERNAME = (process.env.BOT_USERNAME || 'generateii_bot').replace(/^@/,'');
 const WEBHOOK_SECRET = process.env.WEBHOOK_SECRET;
-const APP_URL = process.env.APP_URL || (process.env.RAILWAY_PUBLIC_DOMAIN ? 'https://' + process.env.RAILWAY_PUBLIC_DOMAIN : 'https://a34147488-max.github.io/Bot/');
+const PUBLIC_DOMAIN = (process.env.RAILWAY_PUBLIC_DOMAIN || '').replace(/^https?:\\/\\//,'').replace(/\\/$/,'');\nconst APP_URL = process.env.APP_URL || (PUBLIC_DOMAIN ? 'https://' + PUBLIC_DOMAIN : '');
 const pool = new Pool({ connectionString: process.env.DATABASE_URL, ssl: process.env.DATABASE_URL && !/localhost|127\.0\.0\.1/.test(process.env.DATABASE_URL) ? { rejectUnauthorized:false } : false });
 
 async function initDb(){
@@ -65,7 +65,7 @@ app.post('/telegram-webhook',async(req,res)=>{
     await pool.query('INSERT INTO anon_sessions(sender_id,recipient_id,expires_at) VALUES($1,$2,NOW()+INTERVAL \'24 hours\') ON CONFLICT(sender_id) DO UPDATE SET recipient_id=EXCLUDED.recipient_id,expires_at=EXCLUDED.expires_at',[String(chatId),target]);
     await telegram('sendMessage',{chat_id:chatId,text:'Напиши одно анонимное сообщение в ответ на это сообщение. Твоё имя и профиль не будут показаны получателю.'});return;
    }
-   await telegram('sendMessage',{chat_id:chatId,text:'Привет! Что-бы получить анонимное сообщение, зайди в приложение и получи свою ссылку🍷',reply_markup:{inline_keyboard:[[{text:'Открыть приложение',web_app:{url:APP_URL}}]]}});return;
+   if(!APP_URL){await telegram('sendMessage',{chat_id:chatId,text:'Привет! Что-бы получить анонимное сообщение, зайди в приложение и получи свою ссылку🍷\\n\\nПриложение пока не подключено на сервере. Попробуй позже.'});return;}\n   await telegram('sendMessage',{chat_id:chatId,text:'Привет! Что-бы получить анонимное сообщение, зайди в приложение и получи свою ссылку🍷',reply_markup:{inline_keyboard:[[{text:'Открыть приложение',web_app:{url:APP_URL}}]]}});return;
   }
   if(text.startsWith('/'))return;
   const session=await pool.query('SELECT recipient_id FROM anon_sessions WHERE sender_id=$1 AND expires_at>NOW()',[String(chatId)]);
@@ -89,7 +89,7 @@ async function main(){
    const domain=process.env.RAILWAY_PUBLIC_DOMAIN;
    try{await telegram('setWebhook',{url:'https://'+domain+'/telegram-webhook',secret_token:WEBHOOK_SECRET,allowed_updates:['message']});console.log('Telegram webhook configured')}
    catch(e){console.error('Could not set Telegram webhook:',e.message)}
-  }else console.log('Set RAILWAY_PUBLIC_DOMAIN and BOT_TOKEN to enable webhook');
+  }else console.log('Set BOT_TOKEN and RAILWAY_PUBLIC_DOMAIN (or APP_URL) to enable Telegram webhook and Mini App');
  });
 }
 main().catch(e=>{console.error('Startup failed:',e);process.exit(1)});
