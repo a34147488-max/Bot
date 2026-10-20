@@ -12,7 +12,6 @@
     "node": ">=20"
   },
   "dependencies": {
-    "@fal-ai/client": "^1.6.2",
     "grammy": "^1.35.0",
     "pg": "^8.13.1",
     "dotenv": "^16.4.7"
