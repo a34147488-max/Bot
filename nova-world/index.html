@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+  <meta name="theme-color" content="#080b18"><meta name="description" content="NOVA — маленькая космическая экспедиция прямо в браузере">
+  <title>NOVA — Космическая экспедиция</title><link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="stars" aria-hidden="true"></div>
+  <main class="app">
+    <header class="top"><a class="brand" href="#" aria-label="NOVA home"><span class="brand-mark">✦</span><span>NOVA<span class="muted"> / EXPLORER</span></span></a><div class="status"><i></i> СИСТЕМА АКТИВНА</div></header>
+    <section class="hero">
+      <div class="eyebrow"><span class="line"></span> БОРТОВОЙ ЖУРНАЛ · 001</div>
+      <h1>Там, где<br><em>начинается</em> космос.</h1>
+      <p class="intro">Исследуй неизвестные миры. Собирай энергию. Построй свою маленькую легенду среди звёзд.</p>
+      <div class="planet-wrap"><div class="orbit orbit-one"></div><div class="orbit orbit-two"></div><div class="planet"><div class="planet-shade"></div><div class="planet-ring"></div></div><div class="satellite">✦</div><div class="spark s1">✧</div><div class="spark s2">·</div></div>
+    </section>
+    <section class="stats">
+      <article class="stat"><span class="label">ЭНЕРГИЯ</span><strong id="energy">120</strong><small>⚡ единиц</small></article>
+      <article class="stat"><span class="label">ОТКРЫТИЯ</span><strong id="discoveries">0</strong><small>✧ найдено миров</small></article>
+      <article class="stat"><span class="label">УРОВЕНЬ</span><strong id="level">01</strong><small id="levelName">Новичок</small></article>
+    </section>
+    <section class="mission">
+      <div class="section-head"><div><div class="eyebrow">ТВОЯ СЛЕДУЮЩАЯ ЦЕЛЬ</div><h2 id="missionTitle">Сигнал из туманности</h2></div><span class="mission-index">М-01</span></div>
+      <p id="missionText">Настрой сканер и найди источник загадочного сигнала в глубоком космосе.</p>
+      <div class="progress-track"><div id="progress" class="progress-fill"></div></div><div class="progress-meta"><span id="progressLabel">0 / 3 действия</span><span id="progressPct">0%</span></div>
+      <button id="scanBtn" class="primary"><span>Начать сканирование</span><span class="arrow">↗</span></button>
+      <div id="result" class="result" role="status" aria-live="polite"></div>
+    </section>
+    <section class="log">
+      <div class="section-head"><div><div class="eyebrow">ПАМЯТЬ КОРАБЛЯ</div><h2>Хроника экспедиции</h2></div><span class="live-dot"></span></div>
+      <div id="logList" class="log-list"><div class="empty"><span>✧</span><p>Тишина космоса. Твоё первое открытие ещё впереди.</p></div></div>
+    </section>
+    <footer><span>NOVA EXPLORER</span><span>СОЗДАНО ДЛЯ ЛЮБОПЫТНЫХ <b>✦</b></span></footer>
+  </main><script src="app.js"></script>
+</body></html>
