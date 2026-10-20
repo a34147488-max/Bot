@@ -1,12 +1,10 @@
-name: Deploy NOVA to GitHub Pages
+name: Deploy Shelter Game to GitHub Pages
 
 on:
   push:
     branches: [main]
     paths:
-      - "nova-world/**"
       - "index.html"
-      - "README.md"
       - ".github/workflows/deploy-nova.yml"
   workflow_dispatch:
 
@@ -27,11 +25,11 @@ jobs:
         uses: actions/checkout@v4
       - name: Configure Pages
         uses: actions/configure-pages@v5
-      - name: Prepare NOVA site
+      - name: Prepare game site
         run: |
           mkdir -p public
-          cp -R nova-world/. public/
-      - name: Upload NOVA site
+          cp index.html public/index.html
+      - name: Upload game site
         uses: actions/upload-pages-artifact@v3
         with:
           path: ./public
